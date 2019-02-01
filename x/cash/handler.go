@@ -1,6 +1,8 @@
 package cash
 
 import (
+	"fmt"
+
 	"github.com/iov-one/weave"
 	"github.com/iov-one/weave/errors"
 	"github.com/iov-one/weave/x"
@@ -44,21 +46,21 @@ func (h SendHandler) Check(ctx weave.Context, store weave.KVStore,
 	var res weave.CheckResult
 	rmsg, err := tx.GetMsg()
 	if err != nil {
-		return res, err
+		return res, errors.Wrap(err, "cannot get message")
 	}
 	msg, ok := rmsg.(*SendMsg)
 	if !ok {
-		return res, errors.ErrUnknownTxType(rmsg)
+		return res, errors.InternalErr.New(fmt.Sprintf("unexpected transaction type: %T", rmsg))
 	}
 
 	err = msg.Validate()
 	if err != nil {
-		return res, err
+		return res, errors.Wrap(err, "invalid message")
 	}
 
 	// make sure we have permission from the sender
 	if !h.auth.HasAddress(ctx, msg.Src) {
-		return res, errors.ErrUnauthorized()
+		return res, errors.UnauthorizedErr
 	}
 
 	// return cost
@@ -75,27 +77,27 @@ func (h SendHandler) Deliver(ctx weave.Context, store weave.KVStore,
 	var res weave.DeliverResult
 	rmsg, err := tx.GetMsg()
 	if err != nil {
-		return res, err
+		return res, errors.Wrap(err, "cannot get message")
 	}
 	msg, ok := rmsg.(*SendMsg)
 	if !ok {
-		return res, errors.ErrUnknownTxType(rmsg)
+		return res, errors.InternalErr.New(fmt.Sprintf("unexpected transaction type: %T", rmsg))
 	}
 
 	err = msg.Validate()
 	if err != nil {
-		return res, err
+		return res, errors.Wrap(err, "invalid message")
 	}
 
 	// make sure we have permission from the sender
 	if !h.auth.HasAddress(ctx, msg.Src) {
-		return res, errors.ErrUnauthorized()
+		return res, errors.UnauthorizedErr
 	}
 
 	// move the money....
 	err = h.control.MoveCoins(store, msg.Src, msg.Dest, *msg.Amount)
 	if err != nil {
-		return res, err
+		return res, errors.Wrap(err, "cannot move coins")
 	}
 
 	return res, nil

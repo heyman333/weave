@@ -2,6 +2,7 @@ package cash
 
 import (
 	"github.com/iov-one/weave"
+	"github.com/iov-one/weave/errors"
 	"github.com/iov-one/weave/x"
 )
 
@@ -35,7 +36,7 @@ func (c BaseController) MoveCoins(store weave.KVStore,
 	src weave.Address, dest weave.Address, amount x.Coin) error {
 
 	if !amount.IsPositive() {
-		return ErrInvalidAmount("Non-positive SendMsg")
+		return errors.InvalidValueErr.New("non-positive amount")
 	}
 
 	// load sender, subtract funds, and save
@@ -44,10 +45,10 @@ func (c BaseController) MoveCoins(store weave.KVStore,
 		return err
 	}
 	if sender == nil {
-		return ErrEmptyAccount(src)
+		return errors.InvalidValueErr.New("empty source account")
 	}
 	if !AsCoins(sender).Contains(amount) {
-		return ErrInsufficientFunds()
+		return errors.InvalidValueErr.New("insufficient sender funds")
 	}
 	err = Subtract(AsCoinage(sender), amount)
 	if err != nil {

@@ -71,21 +71,21 @@ func TestFees(t *testing.T) {
 		initState []orm.Object
 		fee       *FeeInfo
 		min       x.Coin
-		expect    checkErr
+		expect    error
 	}{
 		// no fee given, nothing expected
-		0: {nil, nil, nil, x.Coin{}, noErr},
+		0: {nil, nil, nil, x.Coin{}, nil},
 		// no fee given, something expected
-		1: {nil, nil, nil, min, IsInsufficientFeesErr},
+		1: {nil, nil, nil, min, errors.InvalidValueErr},
 		// no signer given
-		2: {nil, nil, &FeeInfo{Fees: &min}, min, errors.IsUnrecognizedAddressErr},
+		2: {nil, nil, &FeeInfo{Fees: &min}, min, errors.InvalidValueErr},
 		// use default signer, but not enough money
 		3: {
 			[]weave.Condition{perm},
 			nil,
 			&FeeInfo{Fees: &min},
 			min,
-			IsEmptyAccountErr,
+			errors.InvalidValueErr,
 		},
 		// signer can cover min, but not pledge
 		4: {
@@ -93,7 +93,7 @@ func TestFees(t *testing.T) {
 			[]orm.Object{must(WalletWith(perm.Address(), &min))},
 			&FeeInfo{Fees: &cash},
 			min,
-			IsInsufficientFundsErr,
+			errors.InvalidValueErr,
 		},
 		// all proper
 		5: {
@@ -101,7 +101,7 @@ func TestFees(t *testing.T) {
 			[]orm.Object{must(WalletWith(perm.Address(), &cash))},
 			&FeeInfo{Fees: &min},
 			min,
-			noErr,
+			nil,
 		},
 		// trying to pay from wrong account
 		6: {
@@ -109,7 +109,7 @@ func TestFees(t *testing.T) {
 			[]orm.Object{must(WalletWith(perm2.Address(), &cash))},
 			&FeeInfo{Payer: perm2.Address(), Fees: &min},
 			min,
-			errors.IsUnauthorizedErr,
+			errors.UnauthorizedErr,
 		},
 		// can pay in any fee
 		7: {
@@ -117,7 +117,7 @@ func TestFees(t *testing.T) {
 			[]orm.Object{must(WalletWith(perm.Address(), &cash))},
 			&FeeInfo{Fees: &min},
 			x.NewCoin(0, 1000, ""),
-			noErr,
+			nil,
 		},
 		// wrong currency checked
 		8: {
@@ -125,7 +125,7 @@ func TestFees(t *testing.T) {
 			[]orm.Object{must(WalletWith(perm.Address(), &cash))},
 			&FeeInfo{Fees: &min},
 			x.NewCoin(0, 1000, "NOT"),
-			x.IsInvalidCurrencyErr,
+			errors.InvalidValueErr,
 		},
 		// has the cash, but didn't offer enough fees
 		9: {
@@ -133,7 +133,7 @@ func TestFees(t *testing.T) {
 			[]orm.Object{must(WalletWith(perm.Address(), &cash))},
 			&FeeInfo{Fees: &min},
 			x.NewCoin(0, 45000, "FOO"),
-			IsInsufficientFeesErr,
+			errors.InvalidValueErr,
 		},
 	}
 
@@ -154,9 +154,9 @@ func TestFees(t *testing.T) {
 			tx := &feeTx{tc.fee}
 
 			_, err := h.Check(nil, kv, tx, okHandler{})
-			assert.True(t, tc.expect(err), "%+v", err)
+			assert.True(t, errors.Is(tc.expect, err), "%+v", err)
 			_, err = h.Deliver(nil, kv, tx, okHandler{})
-			assert.True(t, tc.expect(err), "%+v", err)
+			assert.True(t, errors.Is(tc.expect, err), "%+v", err)
 		})
 	}
 }

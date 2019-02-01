@@ -71,7 +71,7 @@ func (d FeeDecorator) Check(ctx weave.Context, store weave.KVStore, tx weave.Tx,
 
 	// verify we have access to the money
 	if !d.auth.HasAddress(ctx, finfo.Payer) {
-		return res, errors.ErrUnauthorized()
+		return res, errors.UnauthorizedErr
 	}
 	// and have enough
 	err = d.control.MoveCoins(store, finfo.Payer, d.collector, *fee)
@@ -104,7 +104,7 @@ func (d FeeDecorator) Deliver(ctx weave.Context, store weave.KVStore, tx weave.T
 
 	// verify we have access to the money
 	if !d.auth.HasAddress(ctx, finfo.Payer) {
-		return res, errors.ErrUnauthorized()
+		return res, errors.UnauthorizedErr
 	}
 	// and subtract it from the account
 	err = d.control.MoveCoins(store, finfo.Payer, d.collector, *fee)
@@ -128,7 +128,7 @@ func (d FeeDecorator) extractFee(ctx weave.Context, tx weave.Tx) (*FeeInfo, erro
 		if d.minFee.IsZero() {
 			return finfo, nil
 		}
-		return nil, ErrInsufficientFees(x.Coin{})
+		return nil, errors.InvalidMsgErr.New("insufficient fees")
 	}
 
 	// make sure it is a valid fee (non-negative, going somewhere)
@@ -143,10 +143,10 @@ func (d FeeDecorator) extractFee(ctx weave.Context, tx weave.Tx) (*FeeInfo, erro
 		cmp.Ticker = fee.Ticker
 	}
 	if !fee.SameType(cmp) {
-		return nil, x.ErrInvalidCurrency("fee", fee.Ticker)
+		return nil, errors.InvalidMsgErr.New("incompatible fee currency")
 	}
 	if !fee.IsGTE(cmp) {
-		return nil, ErrInsufficientFees(*fee)
+		return nil, errors.InvalidMsgErr.New("insufficient fees")
 	}
 	return finfo, nil
 }

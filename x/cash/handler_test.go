@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type checkErr func(error) bool
-
 func noErr(err error) bool { return err == nil }
 
 func TestSend(t *testing.T) {
@@ -27,45 +25,45 @@ func TestSend(t *testing.T) {
 	perm2 := weave.NewCondition("sig", "ed25519", []byte{4, 5, 6})
 
 	cases := []struct {
-		signers       []weave.Condition
-		initState     []orm.Object
-		msg           weave.Msg
-		expectCheck   checkErr
-		expectDeliver checkErr
+		signers    []weave.Condition
+		initState  []orm.Object
+		msg        weave.Msg
+		checkErr   error
+		deliverErr error
 	}{
-		0: {nil, nil, nil, errors.IsUnknownTxTypeErr, errors.IsUnknownTxTypeErr},
-		1: {nil, nil, new(SendMsg), IsInvalidAmountErr, IsInvalidAmountErr},
-		2: {nil, nil, &SendMsg{Amount: &foo}, errors.IsUnrecognizedAddressErr, errors.IsUnrecognizedAddressErr},
+		0: {nil, nil, nil, errors.InvalidValueErr, errors.InvalidValueErr},
+		1: {nil, nil, new(SendMsg), errors.InvalidValueErr, errors.InvalidValueErr},
+		2: {nil, nil, &SendMsg{Amount: &foo}, errors.InvalidValueErr, errors.InvalidValueErr},
 		3: {
 			nil,
 			nil,
 			&SendMsg{Amount: &foo, Src: perm.Address(), Dest: perm2.Address()},
-			errors.IsUnauthorizedErr,
-			errors.IsUnauthorizedErr,
+			errors.UnauthorizedErr,
+			errors.UnauthorizedErr,
 		},
 		// sender has no account
 		4: {
 			[]weave.Condition{perm},
 			nil,
 			&SendMsg{Amount: &foo, Src: perm.Address(), Dest: perm2.Address()},
-			noErr, // we don't check funds
-			IsEmptyAccountErr,
+			nil, // we don't check funds
+			errors.InvalidValueErr,
 		},
 		// sender too poor
 		5: {
 			[]weave.Condition{perm},
 			[]orm.Object{must(WalletWith(perm.Address(), &some))},
 			&SendMsg{Amount: &foo, Src: perm.Address(), Dest: perm2.Address()},
-			noErr, // we don't check funds
-			IsInsufficientFundsErr,
+			nil, // we don't check funds
+			errors.InvalidValueErr,
 		},
 		// sender got cash
 		6: {
 			[]weave.Condition{perm},
 			[]orm.Object{must(WalletWith(perm.Address(), &foo))},
 			&SendMsg{Amount: &foo, Src: perm.Address(), Dest: perm2.Address()},
-			noErr,
-			noErr,
+			nil,
+			nil,
 		},
 	}
 
@@ -85,9 +83,9 @@ func TestSend(t *testing.T) {
 			tx := helpers.MockTx(tc.msg)
 
 			_, err := h.Check(nil, kv, tx)
-			assert.True(t, tc.expectCheck(err), "%+v", err)
+			assert.True(t, errors.Is(tc.checkErr, err), "%+v", err)
 			_, err = h.Deliver(nil, kv, tx)
-			assert.True(t, tc.expectDeliver(err), "%+v", err)
+			assert.True(t, errors.Is(tc.deliverErr, err), "%+v", err)
 		})
 	}
 }

@@ -2,6 +2,8 @@ package x
 
 import (
 	"regexp"
+
+	"github.com/iov-one/weave/errors"
 )
 
 //-------------- Coin -----------------------
@@ -60,7 +62,7 @@ func (c Coin) ID() string {
 //   c.Add(o.Negative())
 func (c Coin) Add(o Coin) (Coin, error) {
 	if !c.SameType(o) {
-		err := ErrInvalidCurrency(c.Ticker, o.Ticker)
+		err := errors.InvalidValueErr.New("currency missmatch")
 		return Coin{}, err
 	}
 	c.Whole += o.Whole
@@ -172,18 +174,18 @@ func (c *Coin) Clone() *Coin {
 // logic
 func (c Coin) Validate() error {
 	if !IsCC(c.Ticker) {
-		return ErrInvalidCurrency(c.Ticker)
+		return errors.InvalidValueErr.New("invalid ticker")
 	}
 	if c.Whole < MinInt || c.Whole > MaxInt {
-		return ErrOutOfRange(c)
+		return errors.InvalidValueErr.New("out of range")
 	}
 	if c.Fractional < MinFrac || c.Fractional > MaxFrac {
-		return ErrOutOfRange(c)
+		return errors.InvalidValueErr.New("out of range")
 	}
 	// make sure signs match
 	if c.Whole != 0 && c.Fractional != 0 &&
 		((c.Whole > 0) != (c.Fractional > 0)) {
-		return ErrMismatchedSign(c)
+		return errors.InvalidValueErr.New("sign missmatch")
 	}
 
 	return nil
@@ -216,7 +218,7 @@ func (c Coin) normalize() (Coin, error) {
 
 	// return error if integer is out of range
 	if c.Whole < MinInt || c.Whole > MaxInt {
-		return Coin{}, ErrOutOfRange(c)
+		return Coin{}, errors.InvalidValueErr.New("out of range")
 	}
 	return c, nil
 }

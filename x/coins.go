@@ -1,6 +1,10 @@
 package x
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/iov-one/weave/errors"
+)
 
 //--------------------- Coins -------------------------
 
@@ -178,10 +182,10 @@ func (cs Coins) Validate() error {
 			return err
 		}
 		if c.IsZero() {
-			return ErrInvalidWallet("Zero coins")
+			return errors.InvalidValueErr.New("invalid wallet: zero coins")
 		}
 		if c.Ticker < last {
-			return ErrInvalidWallet("Not sorted")
+			return errors.InvalidValueErr.New("invalid wallet: not sorted")
 		}
 		last = c.Ticker
 	}

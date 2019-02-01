@@ -26,6 +26,11 @@ var (
 	// InvalidModelErr is returned whenever a message is invalid and cannot
 	// be used (ie. persisted).
 	InvalidModelErr = NewRootError(4, "invalid model")
+
+	// InvalidValueErr is returned whenever a validation is failing due to
+	// unaccepted value. This is a generalization of InvalidMsgErr and
+	// InvalidModelErr errors.
+	InvalidValueErr = NewRootError(5, "invalid value")
 )
 
 // NewRootError returns an error instance that should be used as the base for
